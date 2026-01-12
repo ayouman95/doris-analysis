@@ -14,7 +14,7 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, loading }) => {
         const clicks = data.map(item => item.clicks);
         const cvr = data.map(item => item.cvr);
         const evr = data.map(item => item.evr);
-        // const ecpc = data.map(item => item.ecpc); // Required in requirements? No, req says "cvr, evr, clicks" for chart.
+        const ecpc = data.map(item => item.ecpc);
 
         return {
             tooltip: {
@@ -24,7 +24,7 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, loading }) => {
                 },
             },
             legend: {
-                data: ['Clicks', 'CVR (‱)', 'EVR (ppm)'],
+                data: ['Clicks', 'CVR (万分之)', 'EVR (百万分之)', 'ECPC (百万分之)'],
             },
             grid: {
                 left: '3%',
@@ -73,16 +73,22 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, loading }) => {
                     data: clicks,
                 },
                 {
-                    name: 'CVR (‱)',
+                    name: 'CVR (万分之)',
                     type: 'line',
                     yAxisIndex: 1,
                     data: cvr,
                 },
                 {
-                    name: 'EVR (ppm)',
+                    name: 'EVR (百万分之)',
                     type: 'line',
                     yAxisIndex: 1,
                     data: evr,
+                },
+                {
+                    name: 'ECPC (百万分之)',
+                    type: 'line',
+                    yAxisIndex: 1,
+                    data: ecpc,
                 },
             ],
         };

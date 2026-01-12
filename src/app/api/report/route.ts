@@ -73,61 +73,8 @@ export async function POST(req: NextRequest) {
         // Sort
         // We calculate rates in the select so we can sort by them.
         // However, reusing alias in ORDER BY is standard SQL.
-        // CVR: installs/clicks * 10000
-        // EVR: events/clicks * 1000000
-        // ECPC: revenues/clicks * 1000000
-
-        // To sort by calculated fields in pagination correctly, we need them in the query.
-
+        // We include calculated fields in the SELECT clause to allow sorting by them.
         const dataQuery = `
-      SELECT 
-        ${selectGroups}
-        SUM(clicks) as clicks,
-        SUM(installs) as installs,
-        SUM(events) as events,
-        SUM(revenues) as revenues
-      FROM click_postback_agg
-      ${whereClause}
-      ${groupByClause}
-      ORDER BY ${sortField} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}
-      LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
-    `;
-
-        // Wait for both
-        const [countRows]: any = await pool.query(countQuery, params);
-        const total = countRows[0]?.total || 0;
-
-        const [rows] = await pool.query<RowDataPacket[]>(dataQuery, params);
-
-        const formattedRows = rows.map((row: any) => {
-            const clicks = Number(row.clicks || 0);
-            const installs = Number(row.installs || 0);
-            const events = Number(row.events || 0);
-            const revenues = Number(row.revenues || 0);
-
-            return {
-                ...row,
-                clicks,
-                installs,
-                events,
-                revenues,
-                cvr: clicks > 0 ? Number(((installs / clicks) * 10000).toFixed(2)) : 0,
-                evr: clicks > 0 ? Number(((events / clicks) * 1000000).toFixed(2)) : 0,
-                ecpc: clicks > 0 ? Number(((revenues / clicks) * 1000000).toFixed(2)) : 0,
-            };
-        });
-
-        // Note: The SQL order by for derived fields (cvr, evr...) 
-        // Standard SQL allows ORDER BY alias. Doris supports this.
-        // But if we want to be safe, we might need to duplicate the expression in ORDER BY if it fails.
-        // Let's assume it works for now (MySQL standard). 
-        // HOWEVER, for `cvr` we need to make sure the alias is available.
-        // Actually, since I am doing calculation in JS for the final output, 
-        // I ALSO need to do it in SQL for the sorting to work correctly on the DB side before LIMIT.
-        // So I should include the calculation in the SELECT clause if I want to ORDER BY it.
-
-        // Refined Query with calculated columns for sorting:
-        const dataQueryRefined = `
       SELECT 
         ${selectGroups}
         SUM(clicks) as clicks,
@@ -144,15 +91,19 @@ export async function POST(req: NextRequest) {
       LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}
     `;
 
-        // Re-run with refined query
-        const [rowsRefined] = await pool.query<RowDataPacket[]>(dataQueryRefined, params);
+        // Wait for count
+        const [countRows]: any = await pool.query(countQuery, params);
+        const total = countRows[0]?.total || 0;
 
-        const formattedRowsRefined = rowsRefined.map((row: any) => ({
+        // Execute data query
+        const [rows] = await pool.query<RowDataPacket[]>(dataQuery, params);
+
+        const formattedRowsRefined = rows.map((row: any) => ({
             ...row,
-            clicks: Number(row.clicks),
-            installs: Number(row.installs),
-            events: Number(row.events),
-            revenues: Number(row.revenues),
+            clicks: Number(row.clicks || 0),
+            installs: Number(row.installs || 0),
+            events: Number(row.events || 0),
+            revenues: Number(row.revenues || 0),
             cvr: Number(Number(row.cvr || 0).toFixed(2)),
             evr: Number(Number(row.evr || 0).toFixed(2)),
             ecpc: Number(Number(row.ecpc || 0).toFixed(2)),
