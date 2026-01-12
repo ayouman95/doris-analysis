@@ -229,7 +229,7 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
                     expandedRowRender: () => null, // We don't use nested row render, we use tree structure which Table supports natively if children exist
                     rowExpandable: (record) => !record.isNodeLeaf,
                     onExpand: handleExpand,
-                    expandedKeys,
+                    expandedRowKeys: expandedKeys,
                     // This is crucial: Antd Table treats records with 'children' as tree nodes.
                     // But we fetch lazily. So initially no children.
                     // We need to verify if Antd tries to render + icon only if children prop exists.
