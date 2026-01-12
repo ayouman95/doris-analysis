@@ -11,23 +11,85 @@ const GROUP_OPTIONS = [
     'model', 'ad_type', 'bid_floor', 'osv'
 ];
 
-const METRICS = ['clicks', 'installs', 'events', 'revenues', 'cvr', 'evr', 'ecpc'];
 interface DataTableProps {
     onFetch: (params: any) => Promise<any>;
-    filterParams: any; // from FilterPanel
+    filterParams: any;
 }
 
-// Helper to find a node and append children
-const updateTreeData = (list: any[], key: string, children: any[]): any[] => {
-    return list.map(node => {
-        if (node.key === key) {
-            return { ...node, children };
+// Metrics to aggregate
+const METRIC_FIELDS = ['clicks', 'installs', 'events', 'revenues'];
+
+// Helper to calculate rates
+const calculateRates = (node: any) => {
+    const clicks = node.clicks || 0;
+    node.cvr = clicks > 0 ? Number(((node.installs / clicks) * 10000).toFixed(2)) : 0;
+    node.evr = clicks > 0 ? Number(((node.events / clicks) * 1000000).toFixed(2)) : 0;
+    node.ecpc = clicks > 0 ? Number(((node.revenues / clicks) * 1000000).toFixed(2)) : 0;
+};
+
+// Recursive function to build tree from flat list
+const buildTree = (data: any[], groups: string[], depth: number = 0): any[] => {
+    if (depth >= groups.length) {
+        // This case should ideally not be reached if data is properly structured for the deepest level
+        // or if the last level items are treated as leaves.
+        // For safety, if we reach here, it means these are the actual leaf items from the API.
+        // We might need to aggregate them if multiple items share the same key at the deepest level.
+        // However, typically the API returns distinct rows for the full group combination.
+        // Let's assume for now that `data` here represents the final leaf nodes.
+        // We'll just return them as is, after ensuring rates are calculated.
+        data.forEach(item => calculateRates(item));
+        return data;
+    }
+
+    const currentGroupField = groups[depth];
+
+    // Group data by current field
+    const groupedMap = new Map<string, any[]>();
+
+    data.forEach(item => {
+        const key = item[currentGroupField] || 'Unknown';
+        if (!groupedMap.has(key)) {
+            groupedMap.set(key, []);
         }
-        if (node.children) {
-            return { ...node, children: updateTreeData(node.children, key, children) };
-        }
-        return node;
+        groupedMap.get(key)!.push(item);
     });
+
+    const result: any[] = [];
+
+    groupedMap.forEach((groupItems, key) => {
+        const node: any = {
+            key: `${depth}_${key}_${Math.random().toString(36).substr(2, 9)}`, // Unique key
+            [currentGroupField]: key, // Store the group value
+            groupValue: key, // Generic field for display in the 'Group' column
+            groupField: currentGroupField,
+            _depth: depth
+        };
+
+        // If this is the last grouping level, the items are leaves in our tree structure
+        if (depth === groups.length - 1) {
+            // Aggregate metrics for this "leaf" node from the groupItems
+            METRIC_FIELDS.forEach(field => node[field] = 0);
+
+            groupItems.forEach(item => {
+                METRIC_FIELDS.forEach(field => node[field] += Number(item[field] || 0));
+            });
+            // No children for these nodes
+        } else {
+            // Parent level: Recursive build children
+            node.children = buildTree(groupItems, groups, depth + 1);
+
+            // Aggregate metrics from children
+            METRIC_FIELDS.forEach(field => node[field] = 0);
+            node.children.forEach((child: any) => {
+                METRIC_FIELDS.forEach(field => node[field] += Number(child[field] || 0));
+            });
+        }
+
+        calculateRates(node);
+        result.push(node);
+    });
+
+    return result;
 };
 
 const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
@@ -37,83 +99,53 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
     const [groupBy, setGroupBy] = useState<string[]>([]);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
     const [sorter, setSorter] = useState<any>({ field: 'clicks', order: 'descend' });
-    const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
 
-    const fetchData = async (
-        parentKey: string | null = null,
-        parentFilters: any = {},
-        currentLevelIndex: number = 0
-    ) => {
-        // If no grouping selected, just fetch flat (or treat as total)
-        // If grouping selected, fetch the level at currentLevelIndex
-        const targetGroup = groupBy[currentLevelIndex];
-
-        // If we ran out of levels, stop
-        if (groupBy.length > 0 && !targetGroup && parentKey !== null) return [];
-
-        // For root (parentKey === null), use state loading. For children, table handles loading icon via promise? 
-        // Antd table onExpand doesn't auto-show loading for async, we might need to handle it.
-        // Actually, we can return null and update state.
-
-        if (parentKey === null) setLoading(true);
-
+    const fetchData = async () => {
+        setLoading(true);
         try {
-            const { current, pageSize } = pagination;
+            const isGrouping = groupBy.length > 0;
+            const pageSize = isGrouping ? 10000 : pagination.pageSize; // "Load All" logic for grouping
+            const current = isGrouping ? 1 : pagination.current;
+
             const sortField = sorter.field || 'clicks';
             const sortOrder = sorter.order === 'ascend' ? 'asc' : 'desc';
 
-            // Construct filters: Base Filters + Filters from Parent Path
             const queryParams = {
                 ...filterParams,
-                ...parentFilters,
-                groupBy: groupBy.length > 0 ? [targetGroup] : [], // Only group by the current level field
-                page: parentKey === null ? current : 1, // Children usually don't page, or we hardcode page 1 big size
-                pageSize: parentKey === null ? pageSize : 50, // Limit children size
+                groupBy, // Send ALL groups
+                page: current,
+                pageSize,
                 sortField,
                 sortOrder
             };
 
             const result = await onFetch(queryParams);
 
-            // Format result for Tree
-            const nodes = result.data.map((item: any, index: number) => {
-                const isLeaf = currentLevelIndex >= groupBy.length - 1;
-                const itemValue = groupBy.length > 0 ? item[targetGroup] : 'Total';
-                // Unique key: ParentKey_Value (to avoid collision)
-                const uniqueKey = parentKey ? `${parentKey}_${itemValue}` : `${itemValue}_${index}`;
+            if (isGrouping) {
+                // Client-side tree construction
+                const treeData = buildTree(result.data, groupBy);
 
-                return {
-                    ...item,
-                    key: uniqueKey,
-                    // Store strict value for next query
-                    _groupValue: itemValue,
-                    _groupField: targetGroup,
-                    _depth: currentLevelIndex,
-                    // If not leaf, mark as expandable (Antd checks 'children' presence or expandable prop)
-                    // We set 'children' to empty array if not leaf to show + icon, but that implies loaded.
-                    // Instead, we use 'leaf' prop or rowExpandable?
-                    // Antd Table: if record.children is undefined, it's a leaf. If it is [], it's an expanded but empty node?
-                    // Actually, we can just use 'isLeaf' property if we use TreeData. But this is Table.
-                    // We will manually manage onExpand.
-                    isNodeLeaf: isLeaf
-                };
-            });
+                // Client-side Sort for the top level
+                treeData.sort((a, b) => {
+                    const valA = a[sortField] || 0;
+                    const valB = b[sortField] || 0;
+                    return sortOrder === 'asc' ? valA - valB : valB - valA;
+                });
 
-            if (parentKey === null) {
-                setData(nodes);
-                setTotal(result.total);
+                setData(treeData);
+                setTotal(treeData.length); // Total root nodes
             } else {
-                return nodes;
+                setData(result.data);
+                setTotal(result.total);
             }
         } finally {
-            if (parentKey === null) setLoading(false);
+            setLoading(false);
         }
     };
 
-    // Initial load & Root change
+    // Initial load & Filter change
     useEffect(() => {
-        setExpandedKeys([]); // Reset expansion on filter change
-        fetchData(null, {}, 0);
+        fetchData();
     }, [filterParams, groupBy, pagination.current, pagination.pageSize, sorter]);
 
     const handleTableChange: TableProps<any>['onChange'] = (pagination, filters, sorter: any) => {
@@ -129,62 +161,30 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
         if (values.length > 3) return;
         setGroupBy(values);
         setPagination(prev => ({ ...prev, current: 1 }));
-        setExpandedKeys([]); // Reset expansion on group change
-    };
-
-    const handleExpand = async (expanded: boolean, record: any) => {
-        if (expanded && (!record.children || record.children.length === 0) && !record.isNodeLeaf) {
-            // Fetch children
-            const nextDepth = record._depth + 1;
-
-            // Construct filters from path. 
-            // We need to know the 'path' of filters. 
-            // Currently record only knows its immediate parent? 
-            // Actually, we need to pass accumulated filters down.
-            // Let's store 'accumulatedFilters' in the record.
-
-            // Re-think: A simpler way is to just use 'record' which contains the values of all previous levels?
-            // No, the record from API only contains the current group column and metrics.
-            // So we MUST pass the filters down.
-
-            const parentFilters = record._filters || {};
-            const nextFilters = { ...parentFilters, [record._groupField]: record._groupValue };
-
-            const children = await fetchData(record.key, nextFilters, nextDepth);
-
-            // Inject accumulated filters into children so they can expand too
-            const childrenWithFilters = children.map((child: any) => ({
-                ...child,
-                _filters: nextFilters
-            }));
-
-            setData(prev => updateTreeData(prev, record.key, childrenWithFilters));
-        }
-
-        setExpandedKeys(prev => expanded ? [...prev, record.key] : prev.filter(k => k !== record.key));
     };
 
     // Columns Configuration
-    // If grouped: Show ONE column for the "Dimensions".
-    // If not grouped: Show ?
-
     let columns: any[] = [];
 
     if (groupBy.length > 0) {
+        // Tree Mode Columns
+        // First column is the Group Hierarchy
         columns.push({
             title: 'Group',
             key: 'group_key',
+            width: 300,
             render: (text: any, record: any) => {
-                // Show the value of the current group field
-                return record[record._groupField] || '-';
+                // This displays the value for the current level
+                return record.groupValue;
             }
         });
     } else {
-        columns.push({ title: 'Total', dataIndex: 'total', render: () => 'All' });
+        // Flat Mode - No Grouping
+        // No specific 'Group' column, metrics will be directly shown
     }
 
-    columns = [
-        ...columns,
+    // Metric Columns
+    const metricCols = [
         { title: 'Clicks', dataIndex: 'clicks', key: 'clicks', sorter: true },
         { title: 'Installs', dataIndex: 'installs', key: 'installs', sorter: true },
         { title: 'Events', dataIndex: 'events', key: 'events', sorter: true },
@@ -193,6 +193,8 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
         { title: 'EVR (百万分之)', dataIndex: 'evr', key: 'evr', sorter: true },
         { title: 'ECPC (百万分之)', dataIndex: 'ecpc', key: 'ecpc', sorter: true },
     ];
+
+    columns = [...columns, ...metricCols];
 
     return (
         <Card title="Detailed Report" style={{ marginTop: 24 }}>
@@ -225,26 +227,7 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
                 }}
                 onChange={handleTableChange}
                 scroll={{ x: 'max-content' }}
-                expandable={{
-                    expandedRowRender: () => null, // We don't use nested row render, we use tree structure which Table supports natively if children exist
-                    rowExpandable: (record) => !record.isNodeLeaf,
-                    onExpand: handleExpand,
-                    expandedRowKeys: expandedKeys,
-                    // This is crucial: Antd Table treats records with 'children' as tree nodes.
-                    // But we fetch lazily. So initially no children.
-                    // We need to verify if Antd tries to render + icon only if children prop exists.
-                    // It usually checks children && children.length > 0.
-                    // To force show +, we might need `children: []` initially?
-                    // Let's try setting children: [] (empty) if not leaf. NOTE: Antd might hide it if empty.
-                    // UPDATE: Antd Table `onExpand` working with `rowExpandable` should show icon even if children missing? 
-                    // No, usually needs children property.
-                    // Let's workaround: Pre-fill children with empty array if not leaf? 
-                    // Or better, check 'hasChildren' or similar?
-                    // Actually, if we set children to `null` or `undefined`, it's a leaf.
-                    // If we set to `[]`, it's an expanded node with no children.
-                    // Let's try setting children: null for leaves, and children: [] for expandables?
-                    // No, `children` property presence usually dictates tree mode.
-                }}
+            // Removing expandable prop to avoid empty render and use default tree behavior
             />
         </Card>
     );
