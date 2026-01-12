@@ -88,7 +88,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch, initialValues }) =>
             <Form.Item name="geo" label="Geo" style={{ width: 150 }}>
                 <DebounceSelect field="geo" placeholder="Geo" />
             </Form.Item>
-            <Form.Item name="app_id" label="App ID" style={{ width: 200 }}>
+            <Form.Item name="app_id" label="App ID" style={{ width: 300 }}>
                 <DebounceSelect field="app_id" placeholder="App ID" />
             </Form.Item>
             <Form.Item name="os" label="OS" style={{ width: 150 }}>
