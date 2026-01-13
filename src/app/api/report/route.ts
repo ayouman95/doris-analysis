@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
             geo,
             app_id,
             os,
+            publisher,
+            bundle,
             groupBy = [],
             page = 1,
             pageSize = 20,
@@ -40,6 +42,14 @@ export async function POST(req: NextRequest) {
         if (os) {
             whereClause += ' AND os = ?';
             params.push(os);
+        }
+        if (publisher) {
+            whereClause += ' AND publisher = ?';
+            params.push(publisher);
+        }
+        if (bundle) {
+            whereClause += ' AND bundle = ?';
+            params.push(bundle);
         }
 
         // Grouping

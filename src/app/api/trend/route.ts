@@ -5,7 +5,7 @@ import { RowDataPacket } from 'mysql2';
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { startDate, endDate, geo, app_id, os } = body;
+        const { startDate, endDate, geo, app_id, os, publisher, bundle } = body;
 
         let whereClause = 'WHERE dt >= ? AND dt <= ?';
         const params: any[] = [startDate, endDate];
@@ -21,6 +21,14 @@ export async function POST(req: NextRequest) {
         if (os) {
             whereClause += ' AND os = ?';
             params.push(os);
+        }
+        if (publisher) {
+            whereClause += ' AND publisher = ?';
+            params.push(publisher);
+        }
+        if (bundle) {
+            whereClause += ' AND bundle = ?';
+            params.push(bundle);
         }
 
         // CVR: installs/clicks * 10000 (万分之)

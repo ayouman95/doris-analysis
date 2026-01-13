@@ -12,6 +12,8 @@ export interface FilterValues {
     geo?: string;
     app_id?: string;
     os?: string;
+    publisher?: string;
+    bundle?: string;
 }
 
 interface FilterPanelProps {
@@ -67,7 +69,9 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch, initialValues }) =>
             dateRange: values.dateRange,
             geo: values.geo,
             app_id: values.app_id,
-            os: values.os
+            os: values.os,
+            publisher: values.publisher,
+            bundle: values.bundle
         });
     };
 
@@ -94,14 +98,20 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch, initialValues }) =>
             <Form.Item name="dateRange" label="Date Range" rules={[{ required: true }]} style={{ flex: '0 0 auto', marginBottom: 0 }}>
                 <RangePicker style={{ width: 240 }} />
             </Form.Item>
-            <Form.Item name="geo" label="Geo" style={{ flex: '0 0 150px', marginBottom: 0 }}>
+            <Form.Item name="geo" label="Geo" style={{ flex: '0 0 120px', marginBottom: 0 }}>
                 <DebounceSelect field="geo" placeholder="Geo" style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="app_id" label="App ID" style={{ flex: '1 1 auto', minWidth: 150, marginBottom: 0 }}>
                 <DebounceSelect field="app_id" placeholder="App ID" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="os" label="OS" style={{ flex: '0 0 150px', marginBottom: 0 }}>
+            <Form.Item name="os" label="OS" style={{ flex: '0 0 100px', marginBottom: 0 }}>
                 <DebounceSelect field="os" placeholder="OS" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="publisher" label="Pub" style={{ flex: '0 0 150px', marginBottom: 0 }}>
+                <DebounceSelect field="publisher" placeholder="Publisher" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="bundle" label="Bundle" style={{ flex: '0 0 150px', marginBottom: 0 }}>
+                <DebounceSelect field="bundle" placeholder="Bundle" style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item style={{ flex: '0 0 auto', marginBottom: 0 }}>
                 <Button type="primary" htmlType="submit">

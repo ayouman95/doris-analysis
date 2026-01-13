@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
-const ALLOWED_FIELDS = ['geo', 'app_id', 'os'];
+const ALLOWED_FIELDS = ['geo', 'app_id', 'os', 'publisher', 'bundle'];
 
 export async function GET(req: NextRequest) {
     try {
