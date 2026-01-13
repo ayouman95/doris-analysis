@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import ReactECharts from 'echarts-for-react';
+import dayjs from 'dayjs';
 
 interface TrendChartProps {
     data: any[];
@@ -10,7 +9,7 @@ interface TrendChartProps {
 
 const TrendChart: React.FC<TrendChartProps> = ({ data, loading }) => {
     const getOption = () => {
-        const dates = data.map(item => item.dt);
+        const dates = data.map(item => dayjs(item.dt).format('YYYY-MM-DD'));
         const clicks = data.map(item => item.clicks);
         const cvr = data.map(item => item.cvr);
         const evr = data.map(item => item.evr);
