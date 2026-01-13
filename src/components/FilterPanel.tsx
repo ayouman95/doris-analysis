@@ -74,27 +74,36 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch, initialValues }) =>
     return (
         <Form
             form={form}
-            layout="inline"
             onFinish={handleFinish}
             initialValues={{
                 dateRange: [dayjs().subtract(7, 'day'), dayjs().subtract(1, 'day')],
                 ...initialValues
             }}
-            style={{ marginBottom: 24, padding: 24, background: '#fff', borderRadius: 8 }}
+            style={{
+                marginBottom: 24,
+                padding: 24,
+                background: '#fff',
+                borderRadius: 8,
+                display: 'flex',
+                flexWrap: 'nowrap',
+                alignItems: 'flex-start', // Align to top in case of validation errors, or 'center'
+                gap: 12,
+                overflowX: 'auto' // Safety scroll
+            }}
         >
-            <Form.Item name="dateRange" label="Date Range" rules={[{ required: true }]}>
-                <RangePicker />
+            <Form.Item name="dateRange" label="Date Range" rules={[{ required: true }]} style={{ flex: '0 0 auto', marginBottom: 0 }}>
+                <RangePicker style={{ width: 240 }} />
             </Form.Item>
-            <Form.Item name="geo" label="Geo" style={{ width: 150 }}>
-                <DebounceSelect field="geo" placeholder="Geo" />
+            <Form.Item name="geo" label="Geo" style={{ flex: '0 0 150px', marginBottom: 0 }}>
+                <DebounceSelect field="geo" placeholder="Geo" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="app_id" label="App ID" style={{ width: 300 }}>
-                <DebounceSelect field="app_id" placeholder="App ID" />
+            <Form.Item name="app_id" label="App ID" style={{ flex: '1 1 auto', minWidth: 150, marginBottom: 0 }}>
+                <DebounceSelect field="app_id" placeholder="App ID" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="os" label="OS" style={{ width: 150 }}>
-                <DebounceSelect field="os" placeholder="OS" />
+            <Form.Item name="os" label="OS" style={{ flex: '0 0 150px', marginBottom: 0 }}>
+                <DebounceSelect field="os" placeholder="OS" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item>
+            <Form.Item style={{ flex: '0 0 auto', marginBottom: 0 }}>
                 <Button type="primary" htmlType="submit">
                     Search
                 </Button>
