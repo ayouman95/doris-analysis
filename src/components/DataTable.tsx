@@ -28,15 +28,14 @@ const calculateRates = (node: any) => {
 };
 
 // Recursive function to build tree from flat list
-const buildTree = (data: any[], groups: string[], depth: number = 0): any[] => {
+const buildTree = (
+    data: any[],
+    groups: string[],
+    depth: number = 0,
+    sortField: string = 'clicks',
+    sortOrder: string = 'desc'
+): any[] => {
     if (depth >= groups.length) {
-        // This case should ideally not be reached if data is properly structured for the deepest level
-        // or if the last level items are treated as leaves.
-        // For safety, if we reach here, it means these are the actual leaf items from the API.
-        // We might need to aggregate them if multiple items share the same key at the deepest level.
-        // However, typically the API returns distinct rows for the full group combination.
-        // Let's assume for now that `data` here represents the final leaf nodes.
-        // We'll just return them as is, after ensuring rates are calculated.
         data.forEach(item => calculateRates(item));
         return data;
     }
@@ -76,7 +75,7 @@ const buildTree = (data: any[], groups: string[], depth: number = 0): any[] => {
             // No children for these nodes
         } else {
             // Parent level: Recursive build children
-            node.children = buildTree(groupItems, groups, depth + 1);
+            node.children = buildTree(groupItems, groups, depth + 1, sortField, sortOrder);
 
             // Aggregate metrics from children
             METRIC_FIELDS.forEach(field => node[field] = 0);
@@ -87,6 +86,13 @@ const buildTree = (data: any[], groups: string[], depth: number = 0): any[] => {
 
         calculateRates(node);
         result.push(node);
+    });
+
+    // Sort the current level nodes
+    result.sort((a, b) => {
+        const valA = a[sortField] || 0;
+        const valB = b[sortField] || 0;
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
     });
 
     return result;
@@ -122,15 +128,8 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
             const result = await onFetch(queryParams);
 
             if (isGrouping) {
-                // Client-side tree construction
-                const treeData = buildTree(result.data, groupBy);
-
-                // Client-side Sort for the top level
-                treeData.sort((a, b) => {
-                    const valA = a[sortField] || 0;
-                    const valB = b[sortField] || 0;
-                    return sortOrder === 'asc' ? valA - valB : valB - valA;
-                });
+                // Client-side tree construction with recursive sorting
+                const treeData = buildTree(result.data, groupBy, 0, sortField, sortOrder);
 
                 setData(treeData);
                 setTotal(treeData.length); // Total root nodes
@@ -188,7 +187,7 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
         { title: 'Clicks', dataIndex: 'clicks', key: 'clicks', sorter: true },
         { title: 'Installs', dataIndex: 'installs', key: 'installs', sorter: true },
         { title: 'Events', dataIndex: 'events', key: 'events', sorter: true },
-        { title: 'Revenues', dataIndex: 'revenues', key: 'revenues', sorter: true },
+        { title: 'Revenues', dataIndex: 'revenues', key: 'revenues', sorter: true, render: (val: number) => val ? Number(val).toFixed(2) : '0.00' },
         { title: 'CVR (万分之)', dataIndex: 'cvr', key: 'cvr', sorter: true },
         { title: 'EVR (百万分之)', dataIndex: 'evr', key: 'evr', sorter: true },
         { title: 'ECPC (百万分之)', dataIndex: 'ecpc', key: 'ecpc', sorter: true },
