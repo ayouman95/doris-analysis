@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
         // Search using LIKE
         const query = `
         SELECT DISTINCT ${field} as value 
-        FROM click_postback_agg 
+        FROM click_postback_agg_v2
         WHERE ${field} LIKE ? 
         LIMIT 50
     `;

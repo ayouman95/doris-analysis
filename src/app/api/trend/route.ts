@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         SUM(installs) as installs,
         SUM(events) as events,
         SUM(revenues) as revenues
-      FROM click_postback_agg
+      FROM click_postback_agg_v2
       ${whereClause}
       GROUP BY dt
       ORDER BY dt ASC

@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         const countQuery = `
         SELECT count(*) as total FROM (
             SELECT 1 
-            FROM click_postback_agg 
+            FROM click_postback_agg_v2
             ${whereClause} 
             ${groupByClause}
         ) as sub
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         (SUM(installs) / NULLIF(SUM(clicks), 0) * 10000) as cvr,
         (SUM(events) / NULLIF(SUM(clicks), 0) * 1000000) as evr,
         (SUM(revenues) / NULLIF(SUM(clicks), 0) * 1000000) as ecpc
-      FROM click_postback_agg
+      FROM click_postback_agg_v2
       ${whereClause}
       ${groupByClause}
       ORDER BY ${sortField} ${sortOrder === 'asc' ? 'ASC' : 'DESC'}
