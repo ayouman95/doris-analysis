@@ -7,8 +7,7 @@ import type { TableProps } from 'antd';
 const { Option } = Select;
 
 const GROUP_OPTIONS = [
-    'geo', 'app_id', 'os', 'publisher', 'bundle', 'brand',
-    'model', 'ad_type', 'bid_floor', 'osv'
+    'geo', 'app_id', 'os', 'publisher', 'bundle'
 ];
 
 interface DataTableProps {
