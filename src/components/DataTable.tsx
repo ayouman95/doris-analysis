@@ -135,7 +135,12 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
                 setData(treeData);
                 setTotal(treeData.length); // Total root nodes
             } else {
-                setData(result.data);
+                // Add unique keys for flat data
+                const dataWithKeys = result.data.map((item: any, idx: number) => ({
+                    ...item,
+                    key: `flat_${idx}_${item.date || ''}_${item.geo || ''}_${item.app_id || ''}`
+                }));
+                setData(dataWithKeys);
                 setTotal(result.total);
             }
         } finally {

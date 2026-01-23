@@ -58,7 +58,6 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ onSearch, initialValues }) =>
                 options={options}
                 placeholder={placeholder}
                 allowClear
-                minInputLength={0}
                 {...props}
             />
         );

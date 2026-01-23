@@ -95,13 +95,30 @@ const TrendChart: React.FC<TrendChartProps> = ({ data, loading }) => {
         };
     };
 
+    // Don't render chart until we have data to avoid flicker
+    if (loading || !data || data.length === 0) {
+        return (
+            <div style={{
+                background: '#fff',
+                padding: 24,
+                borderRadius: 8,
+                marginBottom: 24,
+                height: 400,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+            }}>
+                {loading ? 'Loading...' : 'No data'}
+            </div>
+        );
+    }
+
     return (
         <div style={{ background: '#fff', padding: 24, borderRadius: 8, marginBottom: 24 }}>
             <ReactECharts
                 option={getOption()}
                 notMerge={true}
                 lazyUpdate={true}
-                showLoading={loading}
                 style={{ height: 400 }}
             />
         </div>

@@ -19,6 +19,7 @@ export default function Home() {
 
   // Fetch Trend Data
   const fetchTrend = useCallback(async (filters: FilterValues) => {
+    console.log('[DEBUG] fetchTrend called', new Date().toISOString());
     setTrendLoading(true);
     try {
       const [start, end] = filters.dateRange;
