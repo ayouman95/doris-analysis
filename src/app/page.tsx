@@ -61,8 +61,11 @@ export default function Home() {
     return await response.json();
   };
 
-  // Initial load
+  // Initial load - use ref to prevent double fetch
+  const hasFetched = React.useRef(false);
   React.useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     fetchTrend(filterValues);
   }, []);
 
