@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Table, Select, Space, Card } from 'antd';
+import { Table, Select, Space, Card, Button } from 'antd';
 import type { TableProps } from 'antd';
 
 const { Option } = Select;
@@ -100,6 +100,7 @@ const buildTree = (
 const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any[]>([]);
+    const [rawData, setRawData] = useState<any[]>([]);
     const [total, setTotal] = useState(0);
     const [groupBy, setGroupBy] = useState<string[]>([]);
     const [pagination, setPagination] = useState({ current: 1, pageSize: 20 });
@@ -125,6 +126,7 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
             };
 
             const result = await onFetch(queryParams);
+            setRawData(result.data);
 
             if (isGrouping) {
                 // Client-side tree construction with recursive sorting
@@ -159,6 +161,55 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
         if (values.length > 3) return;
         setGroupBy(values);
         setPagination(prev => ({ ...prev, current: 1 }));
+    };
+
+    const handleExport = () => {
+        if (!rawData || rawData.length === 0) return;
+
+        // Ensure metrics are calculated
+        const dataToExport = rawData.map((item: any) => {
+            const newItem = { ...item };
+            calculateRates(newItem);
+            return newItem;
+        });
+
+        // Determine CSV Headers
+        // Base keys: grouping keys + metrics
+        // If grouping is active, we might want to ensure those fields are present.
+        // If not grouping, we just dump what we have.
+
+        // Let's use a fixed set of convenient headers + dynamic group fields if present
+        const exportFields = [
+            ...groupBy, // current grouping fields
+            ...METRIC_FIELDS,
+            'cvr', 'evr', 'ecpc'
+        ];
+
+        // Add date if present in the first record?
+        if (dataToExport[0] && 'date' in dataToExport[0]) {
+            exportFields.unshift('date');
+        }
+
+        // Add name/other fields that might be relevant but aren't explicitly grouping keys? 
+        // For simplicity, let's stick to the common fields + metrics. 
+        // If the user needs more, we can refine.
+
+        const csvContent = [
+            exportFields.join(','), // Header
+            ...dataToExport.map((row: any) => exportFields.map(field => {
+                const val = row[field];
+                return val !== undefined && val !== null ? val : '';
+            }).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `data_export_${new Date().getTime()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     // Columns Configuration
@@ -210,6 +261,7 @@ const DataTable: React.FC<DataTableProps> = ({ onFetch, filterParams }) => {
                         <Option key={opt} value={opt}>{opt}</Option>
                     ))}
                 </Select>
+                <Button onClick={handleExport} type="primary">Export CSV</Button>
             </Space>
 
             <Table
