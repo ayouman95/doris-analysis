@@ -3,8 +3,7 @@ import pool from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
 const ALLOWED_GROUPS = [
-    'geo', 'app_id', 'os', 'publisher', 'bundle', 'brand',
-    'model', 'ad_type', 'bid_floor', 'osv'
+    'geo', 'app_id', 'os', 'publisher', 'bundle'
 ];
 
 type SortField = 'clicks' | 'installs' | 'events' | 'revenues' | 'cvr' | 'evr' | 'ecpc';
